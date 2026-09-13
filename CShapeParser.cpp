@@ -4,12 +4,24 @@
 #include "CPoint.h"
 #include "CRectangle.h"
 #include "CTriangle.h"
+#include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <sstream>
 
 namespace
 {
-// Убираем все пробелы из строки для упрощения парсинга
+const std::string TRIANGLE_PREFIX = "TRIANGLE:";
+const std::string RECTANGLE_PREFIX = "RECTANGLE:";
+const std::string CIRCLE_PREFIX = "CIRCLE:";
+const std::string LINE_PREFIX = "LINE:";
+
+const std::string POINT_1_KEY = "P1=";
+const std::string POINT_2_KEY = "P2=";
+const std::string POINT_3_KEY = "P3=";
+const std::string CENTER_KEY = "C=";
+const std::string RADIUS_KEY = "R=";
+
 std::string RemoveSpaces(const std::string& str)
 {
 	std::string result;
@@ -24,8 +36,6 @@ std::string RemoveSpaces(const std::string& str)
 	return result;
 }
 
-// Ищем значение после метки вида "P1=", "C=", "R=" и т.п.
-// Возвращает подстроку до следующего разделителя (; или , или конец)
 bool ExtractValue(const std::string& line, const std::string& key, std::string& out)
 {
 	size_t pos = line.find(key);
@@ -45,7 +55,6 @@ bool ExtractValue(const std::string& line, const std::string& key, std::string& 
 	return !out.empty();
 }
 
-// Извлекает точку в формате "x,y" (пробелы уже удалены)
 bool ExtractPoint(const std::string& line, const std::string& key, CPoint& point)
 {
 	size_t pos = line.find(key);
@@ -74,7 +83,7 @@ bool ExtractPoint(const std::string& line, const std::string& key, CPoint& point
 		point = CPoint(x, y);
 		return true;
 	}
-	catch (...)
+	catch (const std::exception&)
 	{
 		return false;
 	}
@@ -85,55 +94,64 @@ std::unique_ptr<IShape> CShapeParser::ParseLine(const std::string& line)
 {
 	std::string normalized = RemoveSpaces(line);
 
-	try
+	if (normalized.rfind(TRIANGLE_PREFIX, 0) == 0)
 	{
-		if (normalized.find("TRIANGLE:") == 0)
+		CPoint p1, p2, p3;
+		if (!ExtractPoint(normalized, POINT_1_KEY, p1)
+			|| !ExtractPoint(normalized, POINT_2_KEY, p2)
+			|| !ExtractPoint(normalized, POINT_3_KEY, p3))
 		{
-			CPoint p1, p2, p3;
-			if (!ExtractPoint(normalized, "P1=", p1) || !ExtractPoint(normalized, "P2=", p2) || !ExtractPoint(normalized, "P3=", p3))
-			{
-				return nullptr;
-			}
-			return std::make_unique<CTriangle>(p1, p2, p3, 0, 0);
+			return nullptr;
+		}
+		return std::make_unique<CTriangle>(p1, p2, p3, 0, 0);
+	}
+
+	if (normalized.rfind(RECTANGLE_PREFIX, 0) == 0)
+	{
+		CPoint p1, p2;
+		if (!ExtractPoint(normalized, POINT_1_KEY, p1)
+			|| !ExtractPoint(normalized, POINT_2_KEY, p2))
+		{
+			return nullptr;
 		}
 
-		if (normalized.find("RECTANGLE:") == 0)
-		{
-			CPoint p1, p2;
-			if (!ExtractPoint(normalized, "P1=", p1) || !ExtractPoint(normalized, "P2=", p2))
-			{
-				return nullptr;
-			}
-			double width = p2.GetX() - p1.GetX();
-			double height = p1.GetY() - p2.GetY();
-			return std::make_unique<CRectangle>(p1, width, height, 0, 0);
-		}
+		double left = std::min(p1.GetX(), p2.GetX());
+		double top = std::min(p1.GetY(), p2.GetY());
+		double width = std::fabs(p2.GetX() - p1.GetX());
+		double height = std::fabs(p2.GetY() - p1.GetY());
 
-		if (normalized.find("CIRCLE:") == 0)
+		return std::make_unique<CRectangle>(CPoint(left, top), width, height, 0, 0);
+	}
+
+	if (normalized.rfind(CIRCLE_PREFIX, 0) == 0)
+	{
+		CPoint center;
+		std::string radiusStr;
+		if (!ExtractPoint(normalized, CENTER_KEY, center)
+			|| !ExtractValue(normalized, RADIUS_KEY, radiusStr))
 		{
-			CPoint center;
-			std::string radiusStr;
-			if (!ExtractPoint(normalized, "C=", center) || !ExtractValue(normalized, "R=", radiusStr))
-			{
-				return nullptr;
-			}
+			return nullptr;
+		}
+		try
+		{
 			double radius = std::stod(radiusStr);
 			return std::make_unique<CCircle>(center, radius, 0, 0);
 		}
-
-		if (normalized.find("LINE:") == 0)
+		catch (const std::exception&)
 		{
-			CPoint p1, p2;
-			if (!ExtractPoint(normalized, "P1=", p1) || !ExtractPoint(normalized, "P2=", p2))
-			{
-				return nullptr;
-			}
-			return std::make_unique<CLineSegment>(p1, p2, 0);
+			return nullptr;
 		}
 	}
-	catch (...)
+
+	if (normalized.rfind(LINE_PREFIX, 0) == 0)
 	{
-		return nullptr;
+		CPoint p1, p2;
+		if (!ExtractPoint(normalized, POINT_1_KEY, p1)
+			|| !ExtractPoint(normalized, POINT_2_KEY, p2))
+		{
+			return nullptr;
+		}
+		return std::make_unique<CLineSegment>(p1, p2, 0);
 	}
 
 	return nullptr;

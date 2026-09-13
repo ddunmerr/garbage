@@ -1,4 +1,6 @@
 #include "CPoint.h"
+#include <iomanip>
+#include <sstream>
 
 CPoint::CPoint() = default;
 

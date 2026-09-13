@@ -1,11 +1,11 @@
 #pragma once
 #include "CShapeParser.h"
-#include "ICanvas.h"
 #include "IShape.h"
-#include "consts.h"
 #include <iosfwd>
 #include <memory>
 #include <vector>
+
+class ICanvas;
 
 class CShapeController
 {
@@ -13,10 +13,10 @@ public:
 	CShapeController(std::istream& input, std::ostream& output);
 
 	void Run();
-	void ReadShapes();
 	void DrawAll(ICanvas& canvas) const;
 
 private:
+	void ReadShapes();
 	void PrintResults() const;
 
 	std::istream& m_input;

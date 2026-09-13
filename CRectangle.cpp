@@ -1,12 +1,13 @@
 #include "CRectangle.h"
+#include <cmath>
 #include <iomanip>
 #include <sstream>
 
 CRectangle::CRectangle(const CPoint& leftTop, double width, double height,
 	uint32_t outlineColor, uint32_t fillColor)
 	: m_leftTop(leftTop)
-	, m_width(width)
-	, m_height(height)
+	, m_width(std::fabs(width))
+	, m_height(std::fabs(height))
 	, m_outlineColor(outlineColor)
 	, m_fillColor(fillColor)
 {
@@ -45,11 +46,15 @@ double CRectangle::GetHeight() const { return m_height; }
 
 void CRectangle::Draw(ICanvas& canvas) const
 {
-	std::vector<CPoint> points = {
-		m_leftTop,
-		CPoint(m_leftTop.GetX() + m_width, m_leftTop.GetY()),
-		CPoint(m_leftTop.GetX() + m_width, m_leftTop.GetY() + m_height),
-		CPoint(m_leftTop.GetX(), m_leftTop.GetY() + m_height)
-	};
-	canvas.FillPolygon(points, m_fillColor);
+	CPoint leftTop = m_leftTop;
+	CPoint rightTop(m_leftTop.GetX() + m_width, m_leftTop.GetY());
+	CPoint rightBottom(m_leftTop.GetX() + m_width, m_leftTop.GetY() + m_height);
+	CPoint leftBottom(m_leftTop.GetX(), m_leftTop.GetY() + m_height);
+
+	canvas.FillPolygon({ leftTop, rightTop, rightBottom, leftBottom }, m_fillColor);
+
+	canvas.DrawLine(leftTop, rightTop, m_outlineColor);
+	canvas.DrawLine(rightTop, rightBottom, m_outlineColor);
+	canvas.DrawLine(rightBottom, leftBottom, m_outlineColor);
+	canvas.DrawLine(leftBottom, leftTop, m_outlineColor);
 }

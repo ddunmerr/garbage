@@ -1,4 +1,6 @@
 #include "CShapeController.h"
+#include "ICanvas.h"
+#include "consts.h"
 #include <iostream>
 
 CShapeController::CShapeController(std::istream& input, std::ostream& output)
@@ -22,6 +24,7 @@ void CShapeController::ReadShapes()
 		{
 			continue;
 		}
+
 		auto shape = CShapeParser::ParseLine(line);
 		if (shape)
 		{
